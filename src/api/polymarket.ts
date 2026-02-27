@@ -1,7 +1,7 @@
 import axios from "axios";
 import type { PolyEvent } from "../types";
 
-const BASE_URL = "https://gamma-api.polymarket.com";
+const BASE_URL = "/api/polymarket";
 
 export const getEvents = async (
   limit = 50,
