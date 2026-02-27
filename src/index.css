@@ -1,0 +1,132 @@
+@import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-glass: rgba(255, 255, 255, 0.05);
+  --color-glass-border: rgba(255, 255, 255, 0.08);
+  --color-glass-hover: rgba(255, 255, 255, 0.1);
+  --color-surface: #0f1117;
+  --color-surface-elevated: #161922;
+  --color-accent: #7c5cfc;
+  --color-accent-light: #a78bfa;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-surface);
+    color: #e4e4e7;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .ai-prose {
+    color: #d4d4d8;
+    font-size: 0.9rem;
+    line-height: 1.7;
+  }
+
+  .ai-prose h1,
+  .ai-prose h2,
+  .ai-prose h3,
+  .ai-prose h4 {
+    color: #f4f4f5;
+    font-weight: 600;
+    margin-top: 1.25em;
+    margin-bottom: 0.5em;
+  }
+
+  .ai-prose h1 { font-size: 1.25rem; }
+  .ai-prose h2 { font-size: 1.1rem; }
+  .ai-prose h3 { font-size: 1rem; }
+
+  .ai-prose p {
+    margin-bottom: 0.75em;
+  }
+
+  .ai-prose ul,
+  .ai-prose ol {
+    margin-left: 1.25em;
+    margin-bottom: 0.75em;
+  }
+
+  .ai-prose li {
+    margin-bottom: 0.25em;
+  }
+
+  .ai-prose strong {
+    color: #f4f4f5;
+    font-weight: 600;
+  }
+
+  .ai-prose code {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    font-size: 0.85em;
+  }
+
+  .ai-prose pre {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 1em;
+    overflow-x: auto;
+    margin-bottom: 1em;
+  }
+
+  .ai-prose pre code {
+    background: none;
+    padding: 0;
+  }
+
+  .ai-prose blockquote {
+    border-left: 3px solid var(--color-accent);
+    padding-left: 1em;
+    margin-left: 0;
+    margin-bottom: 0.75em;
+    color: #a1a1aa;
+  }
+
+  .ai-prose table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1em;
+  }
+
+  .ai-prose th,
+  .ai-prose td {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0.5em 0.75em;
+    text-align: left;
+  }
+
+  .ai-prose th {
+    background: rgba(255, 255, 255, 0.05);
+    font-weight: 600;
+    color: #f4f4f5;
+  }
+}
