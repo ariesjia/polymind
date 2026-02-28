@@ -1,10 +1,22 @@
 import { useState, useEffect, useCallback } from "react";
 import EventGrid from "../components/EventGrid";
 import EventDrawer from "../components/EventDrawer";
+import FilterBar, { type FilterKey } from "../components/FilterBar";
 import { getEvents } from "../api/polymarket";
 import type { PolyEvent, AIConfig, AIHistoryEntry } from "../types";
 
 const PAGE_SIZE = 50;
+
+function getOrderOptions(filter: FilterKey) {
+  switch (filter) {
+    case "ending-soon":
+      return { order: "endDate", ascending: true };
+    case "popular":
+      return { order: "volume24hr", ascending: false };
+    default:
+      return { order: "startDate", ascending: false };
+  }
+}
 
 interface HomePageProps {
   aiConfig: AIConfig;
@@ -28,11 +40,13 @@ export default function HomePage({
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<PolyEvent | null>(null);
+  const [activeFilter, setActiveFilter] = useState<FilterKey>("new");
 
   const fetchEvents = useCallback(
     async (currentOffset: number, append: boolean) => {
+      const options = getOrderOptions(activeFilter);
       try {
-        const data = await getEvents(PAGE_SIZE, currentOffset);
+        const data = await getEvents(PAGE_SIZE, currentOffset, options);
         if (append) {
           setEvents((prev) => [...prev, ...data]);
         } else {
@@ -44,28 +58,42 @@ export default function HomePage({
         setHasMore(false);
       }
     },
-    [setEvents]
+    [activeFilter, setEvents]
   );
 
   useEffect(() => {
-    if (events.length > 0) {
-      setLoading(false);
-      return;
-    }
+    let cancelled = false;
     setLoading(true);
-    fetchEvents(0, false).finally(() => setLoading(false));
-  }, [fetchEvents, events.length]);
+    setOffset(0);
+    setHasMore(true);
+
+    fetchEvents(0, false).then(() => {
+      if (!cancelled) setLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeFilter, fetchEvents]);
 
   const handleLoadMore = async () => {
-    const nextOffset = offset + PAGE_SIZE;
     setLoadingMore(true);
+    const nextOffset = offset + PAGE_SIZE;
     await fetchEvents(nextOffset, true);
     setOffset(nextOffset);
     setLoadingMore(false);
   };
 
+  const handleFilterChange = (key: FilterKey) => {
+    if (key === activeFilter) return;
+    setEvents([]);
+    setActiveFilter(key);
+  };
+
   return (
     <>
+      <FilterBar active={activeFilter} onChange={handleFilterChange} />
+
       <EventGrid
         events={events}
         loading={loading}

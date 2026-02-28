@@ -69,7 +69,8 @@ export default function EventContent({
   getLatestHistory,
   layout = "drawer",
 }: EventContentProps) {
-  const activeMarkets = event.markets?.filter((m) => m.active) || [];
+  const activeMarkets =
+    event.markets?.filter((m) => m.active === true && !m.closed) || [];
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const handleComplete = useCallback(

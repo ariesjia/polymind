@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
-import { BarChart3, Clock, Gift } from "lucide-react";
+import { BarChart3, Clock, Gift, Timer } from "lucide-react";
+import Tooltip from "./Tooltip";
 import type { PolyEvent } from "../types";
 
 interface EventCardProps {
@@ -21,6 +22,21 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString();
 }
 
+function timeUntil(dateStr: string): string | null {
+  if (!dateStr) return null;
+  const end = new Date(dateStr).getTime();
+  const diff = end - Date.now();
+  if (diff <= 0) return "Ended";
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d`;
+  const months = Math.floor(days / 30);
+  return `${months}mo`;
+}
+
 function formatVolume(vol: number): string {
   if (vol >= 1_000_000) return `$${(vol / 1_000_000).toFixed(1)}M`;
   if (vol >= 1_000) return `$${(vol / 1_000).toFixed(1)}K`;
@@ -28,7 +44,8 @@ function formatVolume(vol: number): string {
 }
 
 export default function EventCard({ event, index, onClick }: EventCardProps) {
-  const activeMarkets = event.markets?.filter((m) => m.active) || [];
+  const activeMarkets =
+    event.markets?.filter((m) => m.active === true && !m.closed) || [];
   const totalDailyReward = activeMarkets.reduce((sum, m) => {
     const rate = m.clobRewards?.[0]?.rewardsDailyRate ?? 0;
     return sum + rate;
@@ -78,9 +95,24 @@ export default function EventCard({ event, index, onClick }: EventCardProps) {
         </h3>
 
         <div className="flex items-center justify-between text-xs text-zinc-500">
-          <div className="flex items-center gap-1.5">
-            <Clock size={12} className="shrink-0" />
-            <span>{timeAgo(event.startDate || event.createdAt)}</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <Clock size={12} className="shrink-0" />
+              <span>{timeAgo(event.startDate || event.createdAt)}</span>
+            </div>
+            {event.endDate && (() => {
+              const remaining = timeUntil(event.endDate);
+              if (!remaining) return null;
+              const isUrgent = remaining === "Ended" || remaining.endsWith("h") || remaining.endsWith("m");
+              return (
+                <Tooltip content={`Est. ${new Date(event.endDate).toLocaleString()} · May not be accurate`}>
+                  <div className={`flex items-center gap-1 ${isUrgent ? "text-rose-400" : "text-zinc-500"}`}>
+                    <Timer size={11} className="shrink-0" />
+                    <span>~{remaining}</span>
+                  </div>
+                </Tooltip>
+              );
+            })()}
           </div>
           {event.volume > 0 && (
             <span className="font-medium text-zinc-400">

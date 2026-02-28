@@ -16,9 +16,15 @@ const arrayParamsSerializer = (params: Record<string, unknown>) => {
   return searchParams.toString();
 };
 
+export interface GetEventsOptions {
+  order?: string;
+  ascending?: boolean;
+}
+
 export const getEvents = async (
   limit = 50,
-  offset = 0
+  offset = 0,
+  options?: GetEventsOptions
 ): Promise<PolyEvent[]> => {
   const res = await axios.get(`${BASE_URL}/events/pagination`, {
     params: {
@@ -26,8 +32,8 @@ export const getEvents = async (
       active: true,
       archived: false,
       closed: false,
-      order: "startDate",
-      ascending: false,
+      order: options?.order ?? "startDate",
+      ascending: options?.ascending ?? false,
       offset,
       exclude_tag_id: [100639, 102169],
     },

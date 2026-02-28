@@ -157,7 +157,9 @@ export default function Header({
 
               {results.map((ev) => {
                 const activeCount =
-                  ev.markets?.filter((m) => m.active).length ?? 0;
+                  ev.markets?.filter(
+                    (m) => m.active === true && !m.closed
+                  ).length ?? 0;
                 return (
                   <button
                     key={ev.id}

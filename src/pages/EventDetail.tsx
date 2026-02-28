@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { getEventBySlug } from "../api/polymarket";
 import EventContent from "../components/EventContent";
+import Tooltip from "../components/Tooltip";
 import type { PolyEvent, AIConfig, AIHistoryEntry } from "../types";
 
 function formatVolume(vol: number): string {
@@ -66,7 +67,8 @@ export default function EventDetail({
       .finally(() => setLoading(false));
   }, [slug, stateEvent]);
 
-  const activeMarkets = event?.markets?.filter((m) => m.active) || [];
+  const activeMarkets =
+    event?.markets?.filter((m) => m.active === true && !m.closed) || [];
   const polymarketUrl = event
     ? `https://polymarket.com/event/${event.slug}`
     : "#";
@@ -178,13 +180,15 @@ export default function EventDetail({
           </div>
         )}
         {event.endDate && (
-          <div className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-2.5 text-sm">
-            <Calendar size={14} className="text-rose-400" />
-            <span className="text-zinc-400">Ends</span>
-            <span className="font-semibold text-zinc-200">
-              {formatDate(event.endDate)}
-            </span>
-          </div>
+          <Tooltip content="Estimated end date · May not be accurate">
+            <div className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-2.5 text-sm">
+              <Calendar size={14} className="text-rose-400" />
+              <span className="text-zinc-400">Est. End</span>
+              <span className="font-semibold text-zinc-200">
+                ~{formatDate(event.endDate)}
+              </span>
+            </div>
+          </Tooltip>
         )}
       </div>
 

@@ -43,7 +43,8 @@ export default function SettingsModal({
       return;
     }
     const event = events[selectedEventIdx] || events[0];
-    const activeMarkets = event.markets?.filter((m) => m.active) || [];
+    const activeMarkets =
+      event.markets?.filter((m) => m.active === true && !m.closed) || [];
     const result = buildPrompt(draft.promptTemplate, event, activeMarkets);
     setTestOutput(result);
   };

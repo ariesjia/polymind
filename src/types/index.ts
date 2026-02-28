@@ -115,7 +115,7 @@ export function buildPrompt(
   markets: Market[]
 ): string {
   const marketsText = (markets || [])
-    .filter((market) => market.active)
+    .filter((market) => market.active === true && !market.closed)
     .map((market) => {
       const outcomes = safeJsonParse<string>(market.outcomes);
       return `${market.question}|${outcomes[0]}|${outcomes[1]}`;

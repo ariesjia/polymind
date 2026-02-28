@@ -1,8 +1,9 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ExternalLink, Maximize2 } from "lucide-react";
+import { X, ExternalLink, Maximize2, Timer } from "lucide-react";
 import EventContent from "./EventContent";
+import Tooltip from "./Tooltip";
 import type { PolyEvent, AIConfig, AIHistoryEntry } from "../types";
 
 interface EventDrawerProps {
@@ -69,8 +70,18 @@ export default function EventDrawer({
                 <h2 className="text-base font-bold leading-snug text-white">
                   {event.title}
                 </h2>
-                <div className="mt-1.5 flex items-center gap-2">
+                <div className="mt-1.5 flex flex-wrap items-center gap-2">
                   <p className="text-xs text-zinc-500">{event.slug}</p>
+                  {event.endDate && (
+                    <Tooltip content="Estimated end date · May not be accurate">
+                      <span className="inline-flex items-center gap-1 rounded-lg bg-white/[0.06] px-2.5 py-1 text-xs font-medium text-zinc-400">
+                        <Timer size={11} />
+                        ~{new Date(event.endDate).toLocaleDateString()}
+                      </span>
+                    </Tooltip>
+                  )}
+                </div>
+                <div className="mt-2 flex items-center gap-2">
                   <a
                     href={polymarketUrl}
                     target="_blank"
