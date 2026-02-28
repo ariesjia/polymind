@@ -84,9 +84,9 @@ question|option1|option2
 </markets>`;
 
 export const DEFAULT_AI_CONFIG: AIConfig = {
-  baseUrl: "https://api.minimaxi.com/openai",
+  baseUrl: "https://api.openai.com/",
   apiKey: "",
-  model: "MiniMax-Text-01",
+  model: "gpt-5",
   promptTemplate: DEFAULT_PROMPT_TEMPLATE,
   tavilyApiKey: "",
 };

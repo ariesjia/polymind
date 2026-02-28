@@ -1,5 +1,7 @@
 # PolyMind — AI Prediction Analyzer
 
+[中文文档](./README_CN.md)
+
 An AI-powered analysis tool for [Polymarket](https://polymarket.com/) prediction markets. Browse events, explore market data, and get AI-driven insights on outcome probabilities.
 
 **Live Demo:** [polymind-rho.vercel.app](https://polymind-rho.vercel.app/)

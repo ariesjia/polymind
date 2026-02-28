@@ -1,5 +1,7 @@
 # PolyMind — AI 预测市场分析器
 
+[English](./README.md)
+
 基于 AI 的 [Polymarket](https://polymarket.com/) 预测市场分析工具。浏览事件、查看市场数据，并通过 AI 获取结果概率分析。
 
 **在线体验：** [polymind-rho.vercel.app](https://polymind-rho.vercel.app/)
