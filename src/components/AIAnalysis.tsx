@@ -18,6 +18,7 @@ import {
   Check,
   X,
   Download,
+  Link2,
 } from "lucide-react";
 import { toPng } from "html-to-image";
 import { streamChat } from "../api/ai";
@@ -317,6 +318,15 @@ function ShareModal({ open, onClose, eventTitle, eventSlug, segments }: ShareMod
   const [generating, setGenerating] = useState(false);
   const [copyImgDone, setCopyImgDone] = useState(false);
   const [copyTextDone, setCopyTextDone] = useState(false);
+  const [copyLinkDone, setCopyLinkDone] = useState(false);
+  const [shareToXHint, setShareToXHint] = useState<string | null>(null);
+
+  const detailUrl = eventSlug
+    ? `${window.location.origin}/event/${eventSlug}`
+    : "";
+  const polymarketUrl = eventSlug
+    ? `https://polymarket.com/event/${eventSlug}`
+    : "";
 
   const textContent = segments
     .filter((s) => s.type === "text")
@@ -344,6 +354,8 @@ function ShareModal({ open, onClose, eventTitle, eventSlug, segments }: ShareMod
       setImgUrl(null);
       setCopyImgDone(false);
       setCopyTextDone(false);
+      setCopyLinkDone(false);
+      setShareToXHint(null);
       setTimeout(generateImage, 100);
     }
   }, [open, generateImage]);
@@ -389,6 +401,43 @@ function ShareModal({ open, onClose, eventTitle, eventSlug, segments }: ShareMod
     setTimeout(() => setCopyTextDone(false), 2000);
   }, [eventTitle, eventSlug, textContent]);
 
+  const handleCopyLink = useCallback(async () => {
+    if (!detailUrl) return;
+    await navigator.clipboard.writeText(detailUrl);
+    setCopyLinkDone(true);
+    setTimeout(() => setCopyLinkDone(false), 2000);
+  }, [detailUrl]);
+
+  const handleShareToX = useCallback(async () => {
+    const shareUrl = detailUrl || window.location.href;
+    const tweetText = polymarketUrl
+      ? `AI Analysis: ${eventTitle}\n\nPolymarket: ${polymarketUrl}\n\nPolyMind: ${shareUrl}`
+      : `AI Analysis: ${eventTitle}\n\nPolyMind: ${shareUrl}`;
+    const text = tweetText.slice(0, 280);
+
+    if (imgUrl) {
+      try {
+        const res = await fetch(imgUrl);
+        const blob = await res.blob();
+        await navigator.clipboard.write([
+          new ClipboardItem({ "image/png": blob }),
+        ]);
+        setShareToXHint("Image copied — paste it in your tweet");
+        setTimeout(() => setShareToXHint(null), 4000);
+      } catch {
+        setShareToXHint("Could not copy image");
+        setTimeout(() => setShareToXHint(null), 2000);
+      }
+    }
+
+    const params = new URLSearchParams({ text });
+    window.open(
+      `https://twitter.com/intent/tweet?${params}`,
+      "_blank",
+      "noopener,noreferrer,width=550,height=420"
+    );
+  }, [eventTitle, eventSlug, detailUrl, polymarketUrl, imgUrl]);
+
   return (
     <AnimatePresence>
       {open && (
@@ -430,6 +479,24 @@ function ShareModal({ open, onClose, eventTitle, eventSlug, segments }: ShareMod
                 {/* Actions */}
                 <div className="mb-4 flex flex-wrap gap-2">
                   <button
+                    onClick={handleCopyLink}
+                    disabled={!detailUrl}
+                    className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-xs font-semibold text-zinc-300 transition-all hover:bg-white/[0.08] disabled:opacity-40"
+                  >
+                    {copyLinkDone ? <Check size={14} className="text-emerald-400" /> : <Link2 size={14} />}
+                    {copyLinkDone ? "Copied!" : "Copy Link"}
+                  </button>
+                  <button
+                    onClick={() => void handleShareToX()}
+                    disabled={!detailUrl}
+                    className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-xs font-semibold text-zinc-300 transition-all hover:bg-white/[0.08] disabled:opacity-40"
+                  >
+                    <svg width={14} height={14} viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                    </svg>
+                    Share to X
+                  </button>
+                  <button
                     onClick={handleCopyImage}
                     disabled={!imgUrl || generating}
                     className="flex items-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-2.5 text-xs font-semibold text-indigo-300 transition-all hover:bg-indigo-500/20 disabled:opacity-40"
@@ -453,6 +520,11 @@ function ShareModal({ open, onClose, eventTitle, eventSlug, segments }: ShareMod
                     {copyTextDone ? "Copied!" : "Copy Text"}
                   </button>
                 </div>
+                {shareToXHint && (
+                  <p className="mb-2 text-[11px] text-amber-400/90">
+                    {shareToXHint}
+                  </p>
+                )}
 
                 {/* Image preview */}
                 {generating && (

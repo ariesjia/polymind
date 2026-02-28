@@ -1,8 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Eye, EyeOff, Save, FlaskConical, ChevronDown } from "lucide-react";
+import {
+  X,
+  Eye,
+  EyeOff,
+  Save,
+  FlaskConical,
+  ChevronDown,
+  RotateCcw,
+  Download,
+  Upload,
+} from "lucide-react";
 import type { AIConfig, PolyEvent } from "../types";
-import { buildPrompt } from "../types";
+import { buildPrompt, DEFAULT_AI_CONFIG } from "../types";
 
 interface SettingsModalProps {
   open: boolean;
@@ -23,18 +33,76 @@ export default function SettingsModal({
   const [showKey, setShowKey] = useState(false);
   const [testOutput, setTestOutput] = useState<string | null>(null);
   const [selectedEventIdx, setSelectedEventIdx] = useState(0);
+  const [importError, setImportError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
       setDraft(config);
       setTestOutput(null);
       setSelectedEventIdx(0);
+      setImportError(null);
     }
   }, [open, config]);
 
   const handleSave = () => {
     onSave(draft);
     onClose();
+  };
+
+  const handleRestoreDefault = () => {
+    setDraft({ ...DEFAULT_AI_CONFIG });
+    setTestOutput(null);
+  };
+
+  const handleExport = () => {
+    const blob = new Blob([JSON.stringify(draft, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "polymind-config.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImport = () => {
+    setImportError(null);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result as string) as unknown;
+        if (!parsed || typeof parsed !== "object") {
+          setImportError("Invalid JSON format.");
+          return;
+        }
+        const obj = parsed as Record<string, unknown>;
+        const restored: AIConfig = {
+          baseUrl: typeof obj.baseUrl === "string" ? obj.baseUrl : DEFAULT_AI_CONFIG.baseUrl,
+          apiKey: typeof obj.apiKey === "string" ? obj.apiKey : DEFAULT_AI_CONFIG.apiKey,
+          model: typeof obj.model === "string" ? obj.model : DEFAULT_AI_CONFIG.model,
+          promptTemplate:
+            typeof obj.promptTemplate === "string"
+              ? obj.promptTemplate
+              : DEFAULT_AI_CONFIG.promptTemplate,
+          tavilyApiKey:
+            typeof obj.tavilyApiKey === "string" ? obj.tavilyApiKey : DEFAULT_AI_CONFIG.tavilyApiKey,
+        };
+        setDraft(restored);
+        setTestOutput(null);
+      } catch {
+        setImportError("Failed to parse config file.");
+      }
+    };
+    reader.readAsText(file);
   };
 
   const handleTest = () => {
@@ -251,6 +319,41 @@ export default function SettingsModal({
                     </AnimatePresence>
                   </div>
                 </div>
+              </div>
+
+              {/* Config actions */}
+              <div className="flex shrink-0 flex-wrap gap-2 border-t border-white/[0.06] px-7 py-4 sm:px-8">
+                <button
+                  onClick={handleRestoreDefault}
+                  className="flex items-center gap-2 rounded-lg border border-white/[0.08] px-3 py-2 text-xs font-medium text-zinc-400 transition-all hover:bg-white/[0.04] hover:text-zinc-200"
+                >
+                  <RotateCcw size={12} />
+                  Restore Default
+                </button>
+                <button
+                  onClick={handleExport}
+                  className="flex items-center gap-2 rounded-lg border border-white/[0.08] px-3 py-2 text-xs font-medium text-zinc-400 transition-all hover:bg-white/[0.04] hover:text-zinc-200"
+                >
+                  <Download size={12} />
+                  Export
+                </button>
+                <button
+                  onClick={handleImport}
+                  className="flex items-center gap-2 rounded-lg border border-white/[0.08] px-3 py-2 text-xs font-medium text-zinc-400 transition-all hover:bg-white/[0.04] hover:text-zinc-200"
+                >
+                  <Upload size={12} />
+                  Import
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json,application/json"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+                {importError && (
+                  <p className="w-full text-xs text-red-400">{importError}</p>
+                )}
               </div>
 
               {/* Actions — fixed bottom */}
