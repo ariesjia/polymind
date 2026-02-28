@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   Settings,
-  Brain,
   History,
   Search,
   X,
@@ -98,9 +97,7 @@ export default function Header({
       <div className="flex h-[72px] items-center gap-4 px-6 sm:px-8 lg:px-10">
         {/* Logo */}
         <Link to="/" className="flex shrink-0 items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-500/20">
-            <Brain size={20} className="text-white" />
-          </div>
+          <img src="/logo.svg" alt="PolyMind" className="h-10 w-10 rounded-xl object-contain" />
           <h1 className="text-xl font-bold tracking-tight text-white">
             Poly
             <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">

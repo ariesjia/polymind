@@ -1,8 +1,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { siteConfigPlugin } from './vite/siteConfigPlugin'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), siteConfigPlugin()],
   server: {
     proxy: {
       '/api/polymarket': {

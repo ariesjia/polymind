@@ -548,9 +548,7 @@ function ShareModal({ open, onClose, eventTitle, eventSlug, segments }: ShareMod
                   >
                     {/* Card header with logo */}
                     <div className="mb-5 flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600">
-                        <Brain size={18} className="text-white" />
-                      </div>
+                      <img src="/logo.svg" alt="PolyMind" className="h-9 w-9 rounded-xl object-contain" />
                       <span className="text-lg font-bold text-white">
                         Poly<span className="text-indigo-400">Mind</span>
                       </span>

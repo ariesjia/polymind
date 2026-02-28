@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Routes, Route } from "react-router-dom";
+import { Analytics } from "@vercel/analytics/react";
 import Header from "./components/Header";
 import SettingsModal from "./components/SettingsModal";
 import HistoryDrawer from "./components/HistoryDrawer";
@@ -83,6 +84,8 @@ export default function App() {
         visible={toastVisible}
         onClose={() => setToastVisible(false)}
       />
+
+      <Analytics />
     </div>
   );
 }
