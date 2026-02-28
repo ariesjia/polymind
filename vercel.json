@@ -3,6 +3,10 @@
     {
       "source": "/api/polymarket/:path*",
       "destination": "https://gamma-api.polymarket.com/:path*"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
     }
   ]
 }

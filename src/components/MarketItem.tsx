@@ -6,6 +6,7 @@ import { getOrderBook } from "../api/clob";
 
 interface MarketItemProps {
   market: Market;
+  obOpenOverride?: boolean;
 }
 
 function formatMoney(val: number | string | undefined): string {
@@ -38,7 +39,7 @@ function isInRewardRange(price: number, midpoint: number, maxSpreadCents: number
   return spreadCents <= maxSpreadCents;
 }
 
-export default function MarketItem({ market }: MarketItemProps) {
+export default function MarketItem({ market, obOpenOverride }: MarketItemProps) {
   const outcomes = safeJsonParse<string>(market.outcomes);
   const outcomePrices = safeJsonParse<string>(market.outcomePrices);
   const tokenIds = safeJsonParse<string>(market.clobTokenIds);
@@ -51,8 +52,12 @@ export default function MarketItem({ market }: MarketItemProps) {
   const [obYes, setObYes] = useState<OrderBook | null>(null);
   const [obNo, setObNo] = useState<OrderBook | null>(null);
   const [obLoading, setObLoading] = useState(false);
-  const [obOpen, setObOpen] = useState(!!tokenIds[0]);
+  const [obOpen, setObOpen] = useState(false);
   const [obSide, setObSide] = useState<0 | 1>(0);
+
+  useEffect(() => {
+    if (obOpenOverride !== undefined) setObOpen(obOpenOverride);
+  }, [obOpenOverride]);
 
   const dailyRate = market.clobRewards?.[0]?.rewardsDailyRate ?? 0;
   const hasRewards = dailyRate > 0;

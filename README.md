@@ -1,73 +1,98 @@
-# React + TypeScript + Vite
+# PolyMind — AI Prediction Analyzer
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+An AI-powered analysis tool for [Polymarket](https://polymarket.com/) prediction markets. Browse events, explore market data, and get AI-driven insights on outcome probabilities.
 
-Currently, two official plugins are available:
+**Live Demo:** [polymind-rho.vercel.app](https://polymind-rho.vercel.app/)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
 
-## React Compiler
+### Event Browsing
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Grid view of live Polymarket events with images, market count, and volume
+- Paginated loading (50 events per page) with infinite scroll
+- Click any event to open a detailed side drawer
 
-## Expanding the ESLint configuration
+### Market Data
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- Yes/No outcome probability bars for each market
+- Key metrics: volume, liquidity, bid/ask spread
+- Real-time order book depth (bids & asks) via CLOB API
+- Daily reward eligibility indicators
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### AI Analysis
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+- One-click AI analysis of any event's markets
+- Streaming response with real-time Markdown rendering (tables, lists, etc.)
+- Works with **any OpenAI-compatible API** — use OpenAI, MiniMax, DeepSeek, local models, or any provider
+- Customizable prompt template with variable interpolation (`${event.title}`, `${marketsText}`, etc.)
+- Prompt preview/test tool in settings
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Web Search Integration
+
+- Optional [Tavily](https://tavily.com/) integration for real-time web search
+- AI autonomously decides when to search for supplementary information
+- Search progress displayed with status indicators
+- Up to 3 search rounds per analysis
+
+### Analysis History
+
+- All AI analyses are automatically saved to local storage
+- History sidebar to review, re-read, or delete past analyses
+- Restore previous analysis when revisiting an event
+
+## Tech Stack
+
+| Category | Technology |
+|----------|------------|
+| Framework | React 19 + TypeScript |
+| Build | Vite 7 |
+| Styling | Tailwind CSS 4 |
+| Animation | Framer Motion |
+| Icons | Lucide React |
+| Markdown | react-markdown + remark-gfm |
+| HTTP | Axios (Polymarket API), Fetch (AI streaming) |
+| Deployment | Vercel |
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js >= 18
+- An OpenAI-compatible API key (OpenAI, MiniMax, DeepSeek, etc.)
+- (Optional) A [Tavily API key](https://tavily.com/) for web search
+
+### Install & Run
+
+```bash
+git clone https://github.com/your-username/polymind.git
+cd polymind
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Configuration
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Click the **Settings** icon in the top-right corner to configure:
+
+| Field | Description |
+|-------|-------------|
+| API Base URL | Your AI provider's base URL (e.g. `https://api.openai.com`) |
+| API Key | Your API key |
+| Model | Model name (e.g. `gpt-5`,) |
+| Tavily API Key | (Optional) Enables AI web search capability |
+| Prompt Template | Customize the analysis prompt with event/market variables |
+
+All settings are stored in your browser's local storage — nothing is sent to any server other than the AI provider you configure.
+
+### Build for Production
+
+```bash
+npm run build
+npm run preview
 ```
+
+## License
+
+MIT

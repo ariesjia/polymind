@@ -139,7 +139,7 @@ export default function SettingsModal({
                       onChange={(e) =>
                         setDraft({ ...draft, model: e.target.value })
                       }
-                      placeholder="gpt-4o-mini"
+                      placeholder="model name"
                       className={inputClass}
                     />
                   </div>

@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles,
   Loader2,
@@ -11,13 +12,20 @@ import {
   Globe,
   CircleCheckBig,
   CircleAlert,
+  BotMessageSquare,
+  Share2,
+  Copy,
+  Check,
+  X,
+  Download,
 } from "lucide-react";
+import { toPng } from "html-to-image";
 import { streamChat } from "../api/ai";
 import type { AIToolEvent } from "../api/ai";
 import type { AIConfig, PolyEvent, Market } from "../types";
 import { buildPrompt } from "../types";
 
-type ToolStatus = "running" | "success" | "error";
+type ToolStatus = "running" | "success" | "error" | "info";
 
 interface AIToolActivity {
   callId: string;
@@ -62,7 +70,9 @@ export function useAIAnalysis(
           ? "running"
           : eventInfo.phase === "success"
             ? "success"
-            : "error";
+            : eventInfo.phase === "info"
+              ? "info"
+              : "error";
 
       if (index === -1) {
         return [
@@ -172,7 +182,7 @@ interface ContentSegment {
 }
 
 function isMarkdownTableSeparator(line: string): boolean {
-  return /^\|\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?$/.test(line.trim());
+  return /^\|\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?$/.test(line.trim());
 }
 
 function buildMarkdownSeparatorFromHeader(headerLine: string): string {
@@ -185,26 +195,44 @@ function buildMarkdownSeparatorFromHeader(headerLine: string): string {
 }
 
 function normalizeMarkdownTables(raw: string): string {
-  // Many models emit "table-like" text as one long line with `| |` between rows.
-  // Split those implicit row boundaries so remark-gfm can parse the table.
   const expanded = raw.replace(/\|\s+\|/g, "|\n|");
   const lines = expanded.split("\n");
   const normalized: string[] = [];
+  let inTableBody = false;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    const isTableRow = line.trim().startsWith("|");
+    const isSep = isMarkdownTableSeparator(line);
+
+    if (!isTableRow) {
+      inTableBody = false;
+      normalized.push(line);
+      continue;
+    }
+
+    // Drop extra separator-like rows inside the table body
+    if (inTableBody && isSep) continue;
+
+    if (isSep) {
+      inTableBody = true;
+      normalized.push(line);
+      continue;
+    }
+
     normalized.push(line);
 
-    const isHeader = line.trim().startsWith("|") && line.includes("|");
-    const nextLine = lines[i + 1];
-    const hasNextRow = typeof nextLine === "string" && nextLine.trim().startsWith("|");
-
-    if (!isHeader || !hasNextRow) continue;
-    if (isMarkdownTableSeparator(nextLine)) continue;
-
-    const separator = buildMarkdownSeparatorFromHeader(line);
-    if (separator) {
-      normalized.push(separator);
+    // Only insert a separator after the first row (header) of a table block
+    if (!inTableBody) {
+      const nextLine = lines[i + 1];
+      const nextIsTable = typeof nextLine === "string" && nextLine.trim().startsWith("|");
+      if (nextIsTable && !isMarkdownTableSeparator(nextLine)) {
+        const separator = buildMarkdownSeparatorFromHeader(line);
+        if (separator) {
+          normalized.push(separator);
+          inTableBody = true;
+        }
+      }
     }
   }
 
@@ -275,14 +303,241 @@ function ThinkBlock({ content, defaultOpen }: { content: string; defaultOpen: bo
   );
 }
 
+interface ShareModalProps {
+  open: boolean;
+  onClose: () => void;
+  eventTitle: string;
+  eventSlug: string;
+  segments: ContentSegment[];
+}
+
+function ShareModal({ open, onClose, eventTitle, eventSlug, segments }: ShareModalProps) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [imgUrl, setImgUrl] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [copyImgDone, setCopyImgDone] = useState(false);
+  const [copyTextDone, setCopyTextDone] = useState(false);
+
+  const textContent = segments
+    .filter((s) => s.type === "text")
+    .map((s) => s.content.trim())
+    .join("\n\n");
+
+  const generateImage = useCallback(async () => {
+    if (!cardRef.current) return;
+    setGenerating(true);
+    try {
+      const url = await toPng(cardRef.current, {
+        pixelRatio: 2,
+        backgroundColor: "#12141d",
+      });
+      setImgUrl(url);
+    } catch (err) {
+      console.error("Image generation failed:", err);
+    } finally {
+      setGenerating(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      setImgUrl(null);
+      setCopyImgDone(false);
+      setCopyTextDone(false);
+      setTimeout(generateImage, 100);
+    }
+  }, [open, generateImage]);
+
+  const handleCopyImage = useCallback(async () => {
+    if (!imgUrl) return;
+    try {
+      const res = await fetch(imgUrl);
+      const blob = await res.blob();
+      await navigator.clipboard.write([
+        new ClipboardItem({ "image/png": blob }),
+      ]);
+      setCopyImgDone(true);
+      setTimeout(() => setCopyImgDone(false), 2000);
+    } catch {
+      const link = document.createElement("a");
+      link.download = `polymind-${eventSlug || "analysis"}.png`;
+      link.href = imgUrl;
+      link.click();
+    }
+  }, [imgUrl, eventSlug]);
+
+  const handleDownload = useCallback(() => {
+    if (!imgUrl) return;
+    const link = document.createElement("a");
+    link.download = `polymind-${eventSlug || "analysis"}.png`;
+    link.href = imgUrl;
+    link.click();
+  }, [imgUrl, eventSlug]);
+
+  const handleCopyText = useCallback(async () => {
+    const lines: string[] = [];
+    lines.push(`📊 ${eventTitle}`);
+    if (eventSlug) {
+      lines.push(`🔗 https://polymarket.com/event/${eventSlug}`);
+      lines.push(`🧠 ${window.location.origin}/event/${eventSlug}`);
+    }
+    lines.push("");
+    lines.push(textContent);
+    lines.push("\n— PolyMind AI Analysis");
+    await navigator.clipboard.writeText(lines.join("\n"));
+    setCopyTextDone(true);
+    setTimeout(() => setCopyTextDone(false), 2000);
+  }, [eventTitle, eventSlug, textContent]);
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm"
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+          >
+            <div
+              className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl border border-white/[0.08] bg-[#16182a]/95 shadow-2xl backdrop-blur-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-white/[0.06] px-6 py-4">
+                <h3 className="flex items-center gap-2 text-sm font-bold text-white">
+                  <Share2 size={16} className="text-indigo-400" />
+                  Share Analysis
+                </h3>
+                <button
+                  onClick={onClose}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-white"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Preview area */}
+              <div className="flex-1 overflow-y-auto px-6 py-5">
+                {/* Actions */}
+                <div className="mb-4 flex flex-wrap gap-2">
+                  <button
+                    onClick={handleCopyImage}
+                    disabled={!imgUrl || generating}
+                    className="flex items-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-2.5 text-xs font-semibold text-indigo-300 transition-all hover:bg-indigo-500/20 disabled:opacity-40"
+                  >
+                    {copyImgDone ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                    {copyImgDone ? "Copied!" : "Copy Image"}
+                  </button>
+                  <button
+                    onClick={handleDownload}
+                    disabled={!imgUrl || generating}
+                    className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-xs font-semibold text-zinc-300 transition-all hover:bg-white/[0.08] disabled:opacity-40"
+                  >
+                    <Download size={14} />
+                    Download PNG
+                  </button>
+                  <button
+                    onClick={handleCopyText}
+                    className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-xs font-semibold text-zinc-300 transition-all hover:bg-white/[0.08]"
+                  >
+                    {copyTextDone ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                    {copyTextDone ? "Copied!" : "Copy Text"}
+                  </button>
+                </div>
+
+                {/* Image preview */}
+                {generating && (
+                  <div className="flex items-center justify-center gap-2 py-12 text-sm text-zinc-500">
+                    <Loader2 size={16} className="animate-spin" />
+                    Generating image...
+                  </div>
+                )}
+                {imgUrl && (
+                  <div className="overflow-hidden rounded-xl border border-white/[0.06]">
+                    <img src={imgUrl} alt="Share preview" className="w-full" />
+                  </div>
+                )}
+
+                {/* Hidden card for rendering */}
+                <div className="absolute -left-[9999px] top-0">
+                  <div
+                    ref={cardRef}
+                    className="w-[680px] bg-[#12141d] p-8"
+                    style={{ fontFamily: "'Inter', sans-serif" }}
+                  >
+                    {/* Card header with logo */}
+                    <div className="mb-5 flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600">
+                        <Brain size={18} className="text-white" />
+                      </div>
+                      <span className="text-lg font-bold text-white">
+                        Poly<span className="text-indigo-400">Mind</span>
+                      </span>
+                    </div>
+
+                    {/* Event info */}
+                    <div className="mb-5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-5 py-4">
+                      <p className="text-base font-semibold leading-snug text-white">
+                        {eventTitle}
+                      </p>
+                      {eventSlug && (
+                        <p className="mt-1.5 text-xs text-zinc-500">
+                          polymarket.com/event/{eventSlug}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* AI content (text only, no think blocks) */}
+                    <div className="ai-prose text-[13px] leading-relaxed">
+                      {segments
+                        .filter((s) => s.type === "text")
+                        .map((seg, i) => (
+                          <ReactMarkdown key={i} remarkPlugins={[remarkGfm]}>
+                            {normalizeMarkdownTables(seg.content)}
+                          </ReactMarkdown>
+                        ))}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="mt-6 flex items-center justify-between border-t border-white/[0.06] pt-4">
+                      <span className="text-[11px] text-zinc-600">
+                        Generated by PolyMind AI Analysis
+                      </span>
+                      <span className="text-[11px] text-zinc-600">
+                        {new Date().toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
 interface AIResultPanelProps {
   ai: AIState;
   scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
+  eventTitle?: string;
+  eventSlug?: string;
 }
 
-export function AIResultPanel({ ai, scrollContainerRef }: AIResultPanelProps) {
+export function AIResultPanel({ ai, scrollContainerRef, eventTitle, eventSlug }: AIResultPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const shouldAutoScroll = useRef(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
     if (ai.loading && ai.started) {
@@ -305,6 +560,8 @@ export function AIResultPanel({ ai, scrollContainerRef }: AIResultPanelProps) {
   const segments = useMemo(() => parseThinkBlocks(ai.content), [ai.content]);
   const isThinking = ai.loading && segments.length > 0 && segments[segments.length - 1].type === "think";
 
+  const canShare = !ai.loading && !!ai.content && !ai.error;
+
   if (!ai.started) return null;
 
   return (
@@ -319,14 +576,25 @@ export function AIResultPanel({ ai, scrollContainerRef }: AIResultPanelProps) {
             </span>
           )}
         </h4>
-        <button
-          onClick={ai.runAnalysis}
-          disabled={ai.loading}
-          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-200 disabled:opacity-50"
-        >
-          <RotateCcw size={12} />
-          Re-run
-        </button>
+        <div className="flex items-center gap-1">
+          {canShare && (
+            <button
+              onClick={() => setShareOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-200"
+            >
+              <Share2 size={12} />
+              Share
+            </button>
+          )}
+          <button
+            onClick={ai.runAnalysis}
+            disabled={ai.loading}
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-200 disabled:opacity-50"
+          >
+            <RotateCcw size={12} />
+            Re-run
+          </button>
+        </div>
       </div>
 
       <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6">
@@ -339,28 +607,45 @@ export function AIResultPanel({ ai, scrollContainerRef }: AIResultPanelProps) {
 
         {ai.toolActivities.length > 0 && (
           <div className="mb-4 mt-4 space-y-2 rounded-lg border border-white/[0.06] bg-black/20 p-3">
-            {ai.toolActivities.map((activity) => (
+            {ai.toolActivities.map((activity, idx) => {
+              const isLastInfo =
+                activity.status === "info" &&
+                idx === ai.toolActivities.length - 1;
+              const isInfoDone =
+                activity.status === "info" &&
+                (!isLastInfo || !!ai.content || !ai.loading);
+              const displayStatus = isInfoDone ? "success" as ToolStatus : activity.status;
+
+              return (
               <div
                 key={activity.callId}
                 className="flex items-start gap-2 text-xs text-zinc-400"
               >
-                {activity.status === "running" ? (
+                {displayStatus === "running" ? (
                   <Loader2 size={14} className="mt-0.5 shrink-0 animate-spin text-indigo-400" />
-                ) : activity.status === "success" ? (
+                ) : displayStatus === "success" ? (
                   <CircleCheckBig size={14} className="mt-0.5 shrink-0 text-emerald-400" />
+                ) : displayStatus === "info" ? (
+                  <Loader2 size={14} className="mt-0.5 shrink-0 animate-spin text-indigo-400" />
                 ) : (
                   <CircleAlert size={14} className="mt-0.5 shrink-0 text-red-400" />
                 )}
                 <div className="min-w-0">
                   <p className="flex items-center gap-1.5 text-zinc-300">
-                    <Globe size={12} className="shrink-0" />
-                    <span className="font-medium">{activity.tool}</span>
+                    {activity.tool === "assistant" ? (
+                      <BotMessageSquare size={12} className="shrink-0" />
+                    ) : (
+                      <Globe size={12} className="shrink-0" />
+                    )}
+                    <span className="font-medium">{activity.tool === "assistant" ? "AI" : activity.tool}</span>
                     <span className="text-zinc-500">
-                      {activity.status === "running"
+                      {displayStatus === "running"
                         ? "running"
-                        : activity.status === "success"
+                        : displayStatus === "success"
                           ? "completed"
-                          : "failed"}
+                          : displayStatus === "info"
+                            ? ""
+                            : "failed"}
                     </span>
                   </p>
                   {activity.query && (
@@ -371,7 +656,8 @@ export function AIResultPanel({ ai, scrollContainerRef }: AIResultPanelProps) {
                   )}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -409,6 +695,16 @@ export function AIResultPanel({ ai, scrollContainerRef }: AIResultPanelProps) {
           </div>
         )}
       </div>
+
+      {eventTitle && eventSlug && (
+        <ShareModal
+          open={shareOpen}
+          onClose={() => setShareOpen(false)}
+          eventTitle={eventTitle}
+          eventSlug={eventSlug}
+          segments={segments}
+        />
+      )}
     </div>
   );
 }

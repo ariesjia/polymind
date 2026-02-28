@@ -23,7 +23,7 @@ interface TavilySearchResult {
 }
 
 export interface AIToolEvent {
-  phase: "start" | "success" | "error";
+  phase: "start" | "success" | "error" | "info";
   callId: string;
   tool: string;
   query: string;
@@ -331,6 +331,15 @@ async function runWithTavilyTool(
           throw error;
         }
       }
+
+      onToolEvent?.({
+        phase: "info",
+        callId: `generating-${round}`,
+        tool: "assistant",
+        query: "",
+        message: "AI 正在根据搜索结果生成回答…",
+      });
+
       continue;
     }
 
@@ -340,11 +349,11 @@ async function runWithTavilyTool(
     return;
   }
   onToolEvent?.({
-    phase: "error",
+    phase: "info",
     callId: "tool-round-limit",
     tool: "search_web",
     query: "",
-    message: "Tool rounds reached limit. Generating final answer now.",
+    message: "搜索完成，正在生成最终回答…",
   });
 
   const finalResponse = (await fetchChatCompletion(

@@ -1,26 +1,18 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { Routes, Route } from "react-router-dom";
 import Header from "./components/Header";
-import EventGrid from "./components/EventGrid";
-import EventDrawer from "./components/EventDrawer";
 import SettingsModal from "./components/SettingsModal";
 import HistoryDrawer from "./components/HistoryDrawer";
 import Toast from "./components/Toast";
-import { getEvents } from "./api/polymarket";
+import HomePage from "./pages/HomePage";
+import EventDetail from "./pages/EventDetail";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { useAIHistory } from "./hooks/useAIHistory";
 import type { PolyEvent, AIConfig } from "./types";
 import { DEFAULT_AI_CONFIG } from "./types";
 
-const PAGE_SIZE = 50;
-
 export default function App() {
   const [events, setEvents] = useState<PolyEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [offset, setOffset] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-
-  const [selectedEvent, setSelectedEvent] = useState<PolyEvent | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
@@ -37,37 +29,6 @@ export default function App() {
     setToastVisible(true);
   };
 
-  const fetchEvents = useCallback(
-    async (currentOffset: number, append: boolean) => {
-      try {
-        const data = await getEvents(PAGE_SIZE, currentOffset);
-        if (append) {
-          setEvents((prev) => [...prev, ...data]);
-        } else {
-          setEvents(data);
-        }
-        setHasMore(data.length === PAGE_SIZE);
-      } catch (err) {
-        console.error("Failed to fetch events:", err);
-        setHasMore(false);
-      }
-    },
-    []
-  );
-
-  useEffect(() => {
-    setLoading(true);
-    fetchEvents(0, false).finally(() => setLoading(false));
-  }, [fetchEvents]);
-
-  const handleLoadMore = async () => {
-    const nextOffset = offset + PAGE_SIZE;
-    setLoadingMore(true);
-    await fetchEvents(nextOffset, true);
-    setOffset(nextOffset);
-    setLoadingMore(false);
-  };
-
   return (
     <div className="min-h-screen bg-[var(--color-surface)]">
       <Header
@@ -76,22 +37,30 @@ export default function App() {
         historyCount={entries.length}
       />
 
-      <EventGrid
-        events={events}
-        loading={loading}
-        loadingMore={loadingMore}
-        hasMore={hasMore}
-        onLoadMore={handleLoadMore}
-        onSelectEvent={setSelectedEvent}
-      />
-
-      <EventDrawer
-        event={selectedEvent}
-        onClose={() => setSelectedEvent(null)}
-        aiConfig={aiConfig}
-        onAnalysisComplete={addEntry}
-        getLatestHistory={getLatestForEvent}
-      />
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <HomePage
+              aiConfig={aiConfig}
+              onAnalysisComplete={addEntry}
+              getLatestHistory={getLatestForEvent}
+              events={events}
+              setEvents={setEvents}
+            />
+          }
+        />
+        <Route
+          path="/event/:slug"
+          element={
+            <EventDetail
+              aiConfig={aiConfig}
+              onAnalysisComplete={addEntry}
+              getLatestHistory={getLatestForEvent}
+            />
+          }
+        />
+      </Routes>
 
       <HistoryDrawer
         open={historyOpen}
