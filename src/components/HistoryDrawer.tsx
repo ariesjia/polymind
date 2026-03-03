@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Trash2, ChevronRight, Clock, Sparkles, Trash, ExternalLink, ArrowRight } from "lucide-react";
+import { X, Trash2, ChevronRight, Clock, Sparkles, Trash, ArrowRight } from "lucide-react";
 import type { AIHistoryEntry } from "../types";
 import { parseThinkBlocks } from "../utils/aiContent";
 import { AIContentDisplay } from "./AIContentDisplay";
@@ -76,15 +76,6 @@ function HistoryEntry({
               <ArrowRight size={9} />
               View details
             </button>
-            <a
-              href={`https://polymarket.com/event/${entry.eventSlug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 rounded bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-medium text-indigo-400 transition-colors hover:bg-white/[0.1] hover:text-indigo-300"
-            >
-              <ExternalLink size={9} />
-              Polymarket
-            </a>
           </div>
         </div>
         <button

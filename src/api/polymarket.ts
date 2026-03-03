@@ -46,9 +46,7 @@ export const getEventBySlug = async (
   slug: string
 ): Promise<PolyEvent | null> => {
   try {
-    const res = await axios.get(`${BASE_URL}/events`, {
-      params: { slug },
-    });
+    const res = await axios.get(`${BASE_URL}/events/slug/${encodeURIComponent(slug)}`);
     return res.data ?? null;
   } catch {
     return null;

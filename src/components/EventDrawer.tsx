@@ -41,7 +41,7 @@ export default function EventDrawer({
   const handleOpenDetail = () => {
     if (!event) return;
     onClose();
-    navigate(`/event/${event.slug}`, { state: { event } });
+    navigate(`/event/${event.slug}`);
   };
 
   return (

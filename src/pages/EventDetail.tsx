@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useLocation, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   ExternalLink,
@@ -43,16 +43,15 @@ export default function EventDetail({
   getLatestHistory,
 }: EventDetailProps) {
   const { slug } = useParams<{ slug: string }>();
-  const location = useLocation();
   const navigate = useNavigate();
 
-  const stateEvent = (location.state as { event?: PolyEvent } | null)?.event;
-  const [event, setEvent] = useState<PolyEvent | null>(stateEvent ?? null);
-  const [loading, setLoading] = useState(!stateEvent);
+  const [event, setEvent] = useState<PolyEvent | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (stateEvent || !slug) return;
+    if (!slug) return;
+    setEvent(null);
     setLoading(true);
     setError(null);
     getEventBySlug(slug)
@@ -65,7 +64,7 @@ export default function EventDetail({
       })
       .catch(() => setError("Failed to load event."))
       .finally(() => setLoading(false));
-  }, [slug, stateEvent]);
+  }, [slug]);
 
   const activeMarkets =
     event?.markets?.filter((m) => m.active === true && !m.closed) || [];

@@ -82,7 +82,7 @@ export default function Header({
     setQuery("");
     setOpen(false);
     setResults([]);
-    navigate(`/event/${event.slug}`, { state: { event } });
+    navigate(`/event/${event.slug}`);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
