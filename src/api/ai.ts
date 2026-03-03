@@ -390,6 +390,123 @@ async function runWithTavilyTool(
   await streamDirectChat(config, prompt, onChunk, onDone, signal);
 }
 
+/**
+ * 将原始错误转换为用户友好的错误信息
+ */
+export function formatChatError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+
+  // 跨域 / 网络错误
+  if (
+    msg.includes("Failed to fetch") ||
+    msg.includes("NetworkError") ||
+    msg.includes("Network request failed") ||
+    msg.includes("Load failed")
+  ) {
+    return "连接失败：可能是跨域(CORS)或网络问题。请确认：\n• API 地址是否正确且可被浏览器访问\n• 若使用自建代理，需配置 CORS 允许当前域名\n• 检查网络连接是否正常";
+  }
+
+  // 超时
+  if (msg.includes("timeout") || msg.includes("Timeout")) {
+    return "请求超时：API 响应过慢，请稍后重试或检查网络。";
+  }
+
+  // 401 未授权
+  if (msg.includes("401") || msg.includes("Unauthorized")) {
+    return "认证失败：API Key 无效或已过期，请在设置中检查并更新。";
+  }
+
+  // 403 禁止
+  if (msg.includes("403") || msg.includes("Forbidden")) {
+    return "访问被拒绝：API Key 可能没有访问该模型的权限。";
+  }
+
+  // 404
+  if (msg.includes("404") || msg.includes("Not Found")) {
+    return "接口不存在：请检查 API Base URL 是否正确（如 https://api.openai.com）。";
+  }
+
+  // 429 限流
+  if (msg.includes("429") || msg.includes("rate limit")) {
+    return "请求过于频繁：请稍后再试。";
+  }
+
+  // 500 系列
+  if (msg.includes("500") || msg.includes("502") || msg.includes("503")) {
+    return "服务端错误：API 服务暂时不可用，请稍后重试。";
+  }
+
+  // 其他 API 错误（保留原始信息但简化）
+  if (msg.startsWith("API Error")) {
+    return msg;
+  }
+
+  return msg || "未知错误，请检查配置后重试。";
+}
+
+export interface TestChatResult {
+  ok: boolean;
+  message?: string;
+  error?: string;
+}
+
+/**
+ * 测试 Chat API 连接，发送简单请求验证配置
+ */
+export async function testChatConnection(
+  config: AIConfig,
+  signal?: AbortSignal
+): Promise<TestChatResult> {
+  if (!config.apiKey?.trim()) {
+    return { ok: false, error: "请先填写 API Key。" };
+  }
+  if (!config.baseUrl?.trim()) {
+    return { ok: false, error: "请先填写 API Base URL。" };
+  }
+
+  const url = `${config.baseUrl.replace(/\/+$/, "")}/v1/chat/completions`;
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: config.model || "gpt-3.5-turbo",
+        messages: [{ role: "user", content: "Hi" }],
+        max_tokens: 5,
+      }),
+      signal,
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      const friendly = formatChatError(
+        new Error(`API Error ${response.status}: ${errorBody || response.statusText}`)
+      );
+      return { ok: false, error: friendly };
+    }
+
+    const data = (await response.json()) as {
+      choices?: Array<{ message?: { content?: unknown } }>;
+    };
+    const content = data.choices?.[0]?.message?.content;
+    const reply = typeof content === "string" ? content : "OK";
+
+    return { ok: true, message: `连接成功，模型回复：${reply}` };
+  } catch (err: unknown) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      return { ok: false, error: "测试已取消。" };
+    }
+    return {
+      ok: false,
+      error: formatChatError(err),
+    };
+  }
+}
+
 export async function streamChat(
   config: AIConfig,
   prompt: string,

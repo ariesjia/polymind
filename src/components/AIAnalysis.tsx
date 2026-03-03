@@ -2,13 +2,13 @@ import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { motion, AnimatePresence } from "framer-motion";
+import { parseThinkBlocks, normalizeMarkdownTables } from "../utils/aiContent";
+import { AIContentDisplay } from "./AIContentDisplay";
 import {
   Sparkles,
   Loader2,
   RotateCcw,
   AlertCircle,
-  ChevronRight,
-  Brain,
   Globe,
   CircleCheckBig,
   CircleAlert,
@@ -177,132 +177,7 @@ export function useAIAnalysis(
   };
 }
 
-interface ContentSegment {
-  type: "text" | "think";
-  content: string;
-}
-
-function isMarkdownTableSeparator(line: string): boolean {
-  return /^\|\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?$/.test(line.trim());
-}
-
-function buildMarkdownSeparatorFromHeader(headerLine: string): string {
-  const columns = headerLine
-    .split("|")
-    .map((part) => part.trim())
-    .filter(Boolean);
-  if (columns.length < 2) return "";
-  return `| ${columns.map(() => "---").join(" | ")} |`;
-}
-
-function normalizeMarkdownTables(raw: string): string {
-  const expanded = raw.replace(/\|\s+\|/g, "|\n|");
-  const lines = expanded.split("\n");
-  const normalized: string[] = [];
-  let inTableBody = false;
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const isTableRow = line.trim().startsWith("|");
-    const isSep = isMarkdownTableSeparator(line);
-
-    if (!isTableRow) {
-      inTableBody = false;
-      normalized.push(line);
-      continue;
-    }
-
-    // Drop extra separator-like rows inside the table body
-    if (inTableBody && isSep) continue;
-
-    if (isSep) {
-      inTableBody = true;
-      normalized.push(line);
-      continue;
-    }
-
-    normalized.push(line);
-
-    // Only insert a separator after the first row (header) of a table block
-    if (!inTableBody) {
-      const nextLine = lines[i + 1];
-      const nextIsTable = typeof nextLine === "string" && nextLine.trim().startsWith("|");
-      if (nextIsTable && !isMarkdownTableSeparator(nextLine)) {
-        const separator = buildMarkdownSeparatorFromHeader(line);
-        if (separator) {
-          normalized.push(separator);
-          inTableBody = true;
-        }
-      }
-    }
-  }
-
-  return normalized.join("\n");
-}
-
-function parseThinkBlocks(raw: string): ContentSegment[] {
-  const segments: ContentSegment[] = [];
-  let remaining = raw;
-
-  while (remaining.length > 0) {
-    const openIdx = remaining.indexOf("<think>");
-    if (openIdx === -1) {
-      if (remaining.trim()) segments.push({ type: "text", content: remaining });
-      break;
-    }
-
-    const before = remaining.slice(0, openIdx);
-    if (before.trim()) segments.push({ type: "text", content: before });
-
-    const closeIdx = remaining.indexOf("</think>", openIdx);
-    if (closeIdx === -1) {
-      // think tag opened but not closed yet (still streaming)
-      const thinkContent = remaining.slice(openIdx + 7);
-      segments.push({ type: "think", content: thinkContent });
-      break;
-    }
-
-    const thinkContent = remaining.slice(openIdx + 7, closeIdx);
-    segments.push({ type: "think", content: thinkContent });
-    remaining = remaining.slice(closeIdx + 8);
-  }
-
-  return segments;
-}
-
-function ThinkBlock({ content, defaultOpen }: { content: string; defaultOpen: boolean }) {
-  const [open, setOpen] = useState(defaultOpen);
-
-  return (
-    <div className="mb-4 rounded-lg border border-white/[0.06] bg-white/[0.02]">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-300"
-      >
-        <ChevronRight
-          size={14}
-          className={`shrink-0 transition-transform duration-200 ${open ? "rotate-90" : ""}`}
-        />
-        <Brain size={14} className="shrink-0" />
-        <span>Thinking process</span>
-        {!open && (
-          <span className="ml-auto text-zinc-600">
-            {content.length > 50 ? content.slice(0, 50).trim() + "..." : content.trim()}
-          </span>
-        )}
-      </button>
-      {open && (
-        <div className="border-t border-white/[0.04] px-4 py-3">
-          <div className="ai-prose text-xs leading-relaxed text-zinc-500">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {normalizeMarkdownTables(content)}
-              </ReactMarkdown>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+import type { ContentSegment } from "../utils/aiContent";
 
 interface ShareModalProps {
   open: boolean;
@@ -731,21 +606,14 @@ export function AIResultPanel({ ai, scrollContainerRef, eventTitle, eventSlug }:
           </div>
         )}
 
-        {segments.map((seg, i) =>
-          seg.type === "think" ? (
-            <ThinkBlock
-              key={i}
-              content={seg.content}
-              defaultOpen={ai.loading && i === segments.length - 1}
-            />
-          ) : (
-            <div key={i} className="ai-prose">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {normalizeMarkdownTables(seg.content)}
-              </ReactMarkdown>
-            </div>
-          )
-        )}
+        <AIContentDisplay
+          segments={segments}
+          openThinkIndex={
+            ai.loading && segments.length > 0 && segments[segments.length - 1].type === "think"
+              ? segments.length - 1
+              : -1
+          }
+        />
 
         {ai.loading && ai.content && (
           <div className="mt-3 flex items-center gap-2">

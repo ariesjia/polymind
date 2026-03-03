@@ -1,8 +1,10 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import ReactMarkdown from "react-markdown";
-import { X, Trash2, ChevronRight, Brain, Clock, Sparkles, Trash, ExternalLink } from "lucide-react";
+import { X, Trash2, ChevronRight, Clock, Sparkles, Trash, ExternalLink, ArrowRight } from "lucide-react";
 import type { AIHistoryEntry } from "../types";
+import { parseThinkBlocks } from "../utils/aiContent";
+import { AIContentDisplay } from "./AIContentDisplay";
 
 interface HistoryDrawerProps {
   open: boolean;
@@ -24,59 +26,40 @@ function timeAgo(ts: number): string {
   return new Date(ts).toLocaleDateString();
 }
 
-interface ContentSegment {
-  type: "text" | "think";
-  content: string;
-}
-
-function parseThinkBlocks(raw: string): ContentSegment[] {
-  const segments: ContentSegment[] = [];
-  let remaining = raw;
-  while (remaining.length > 0) {
-    const openIdx = remaining.indexOf("<think>");
-    if (openIdx === -1) {
-      if (remaining.trim()) segments.push({ type: "text", content: remaining });
-      break;
-    }
-    const before = remaining.slice(0, openIdx);
-    if (before.trim()) segments.push({ type: "text", content: before });
-    const closeIdx = remaining.indexOf("</think>", openIdx);
-    if (closeIdx === -1) {
-      segments.push({ type: "think", content: remaining.slice(openIdx + 7) });
-      break;
-    }
-    segments.push({ type: "think", content: remaining.slice(openIdx + 7, closeIdx) });
-    remaining = remaining.slice(closeIdx + 8);
-  }
-  return segments;
-}
-
 function HistoryEntry({
   entry,
   onRemove,
+  onGoToDetail,
 }: {
   entry: AIHistoryEntry;
   onRemove: () => void;
+  onGoToDetail: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [thinkOpen, setThinkOpen] = useState(false);
   const segments = useMemo(() => parseThinkBlocks(entry.content), [entry.content]);
 
   return (
     <div className="rounded-xl border border-white/[0.06] bg-white/[0.02]">
       {/* Summary row */}
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-start gap-3 px-5 py-4 text-left transition-colors hover:bg-white/[0.02]"
-      >
-        <ChevronRight
-          size={14}
-          className={`mt-0.5 shrink-0 text-zinc-500 transition-transform duration-200 ${expanded ? "rotate-90" : ""}`}
-        />
+      <div className="flex w-full items-start gap-3 px-5 py-4">
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="mt-0.5 shrink-0 rounded p-0.5 text-zinc-500 transition-colors hover:text-zinc-300"
+        >
+          <ChevronRight
+            size={14}
+            className={`transition-transform duration-200 ${expanded ? "rotate-90" : ""}`}
+          />
+        </button>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium leading-snug text-zinc-200 line-clamp-2">
-            {entry.eventTitle}
-          </p>
+          <button
+            onClick={onGoToDetail}
+            className="group block w-full text-left"
+          >
+            <p className="text-sm font-medium leading-snug text-zinc-200 line-clamp-2 transition-colors group-hover:text-indigo-400">
+              {entry.eventTitle}
+            </p>
+          </button>
           <p className="mt-1.5 text-[11px] text-zinc-600 truncate">{entry.eventSlug}</p>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
             <span className="flex items-center gap-1">
@@ -86,11 +69,17 @@ function HistoryEntry({
             <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-medium text-zinc-400">
               {entry.model}
             </span>
+            <button
+              onClick={onGoToDetail}
+              className="inline-flex items-center gap-1 rounded bg-indigo-500/20 px-1.5 py-0.5 text-[10px] font-medium text-indigo-400 transition-colors hover:bg-indigo-500/30 hover:text-indigo-300"
+            >
+              <ArrowRight size={9} />
+              View details
+            </button>
             <a
               href={`https://polymarket.com/event/${entry.eventSlug}`}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
               className="inline-flex items-center gap-1 rounded bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-medium text-indigo-400 transition-colors hover:bg-white/[0.1] hover:text-indigo-300"
             >
               <ExternalLink size={9} />
@@ -99,15 +88,12 @@ function HistoryEntry({
           </div>
         </div>
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove();
-          }}
+          onClick={onRemove}
           className="mt-0.5 shrink-0 rounded-lg p-1.5 text-zinc-600 transition-colors hover:bg-red-500/10 hover:text-red-400"
         >
           <Trash2 size={13} />
         </button>
-      </button>
+      </div>
 
       {/* Expanded content */}
       <AnimatePresence>
@@ -120,34 +106,7 @@ function HistoryEntry({
             className="overflow-hidden"
           >
             <div className="border-t border-white/[0.04] px-5 py-5">
-              {segments.map((seg, i) =>
-                seg.type === "think" ? (
-                  <div key={i} className="mb-4 rounded-lg border border-white/[0.06] bg-white/[0.02]">
-                    <button
-                      onClick={() => setThinkOpen(!thinkOpen)}
-                      className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-300"
-                    >
-                      <ChevronRight
-                        size={14}
-                        className={`shrink-0 transition-transform duration-200 ${thinkOpen ? "rotate-90" : ""}`}
-                      />
-                      <Brain size={14} className="shrink-0" />
-                      <span>Thinking process</span>
-                    </button>
-                    {thinkOpen && (
-                      <div className="border-t border-white/[0.04] px-4 py-3">
-                        <div className="ai-prose text-xs leading-relaxed text-zinc-500">
-                          <ReactMarkdown>{seg.content}</ReactMarkdown>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div key={i} className="ai-prose">
-                    <ReactMarkdown>{seg.content}</ReactMarkdown>
-                  </div>
-                )
-              )}
+              <AIContentDisplay segments={segments} compact />
             </div>
           </motion.div>
         )}
@@ -163,6 +122,13 @@ export default function HistoryDrawer({
   onRemove,
   onClearAll,
 }: HistoryDrawerProps) {
+  const navigate = useNavigate();
+
+  const handleGoToDetail = (slug: string) => {
+    navigate(`/event/${slug}`);
+    onClose();
+  };
+
   return (
     <AnimatePresence>
       {open && (
@@ -227,6 +193,7 @@ export default function HistoryDrawer({
                       key={entry.id}
                       entry={entry}
                       onRemove={() => onRemove(entry.id)}
+                      onGoToDetail={() => handleGoToDetail(entry.eventSlug)}
                     />
                   ))}
                 </div>

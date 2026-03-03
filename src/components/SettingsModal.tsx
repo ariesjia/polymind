@@ -10,9 +10,14 @@ import {
   RotateCcw,
   Download,
   Upload,
+  MessageCircle,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 import type { AIConfig, PolyEvent } from "../types";
 import { buildPrompt, DEFAULT_AI_CONFIG } from "../types";
+import { testChatConnection } from "../api/ai";
 
 interface SettingsModalProps {
   open: boolean;
@@ -34,6 +39,12 @@ export default function SettingsModal({
   const [testOutput, setTestOutput] = useState<string | null>(null);
   const [selectedEventIdx, setSelectedEventIdx] = useState(0);
   const [importError, setImportError] = useState<string | null>(null);
+  const [chatTestLoading, setChatTestLoading] = useState(false);
+  const [chatTestResult, setChatTestResult] = useState<{
+    ok: boolean;
+    message?: string;
+    error?: string;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -42,6 +53,7 @@ export default function SettingsModal({
       setTestOutput(null);
       setSelectedEventIdx(0);
       setImportError(null);
+      setChatTestResult(null);
     }
   }, [open, config]);
 
@@ -115,6 +127,17 @@ export default function SettingsModal({
       event.markets?.filter((m) => m.active === true && !m.closed) || [];
     const result = buildPrompt(draft.promptTemplate, event, activeMarkets);
     setTestOutput(result);
+  };
+
+  const handleChatTest = async () => {
+    setChatTestResult(null);
+    setChatTestLoading(true);
+    try {
+      const result = await testChatConnection(draft);
+      setChatTestResult(result);
+    } finally {
+      setChatTestLoading(false);
+    }
   };
 
   const inputClass =
@@ -211,6 +234,82 @@ export default function SettingsModal({
                       placeholder="model name"
                       className={inputClass}
                     />
+                  </div>
+
+                  {/* Chat 连接测试 */}
+                  <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-5">
+                    <div className="mb-3 flex items-center justify-between">
+                      <label className="text-xs font-medium text-zinc-400">
+                        Chat 连接测试
+                      </label>
+                      <button
+                        onClick={handleChatTest}
+                        disabled={chatTestLoading}
+                        className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-400 transition-all hover:bg-emerald-500/20 disabled:opacity-50"
+                      >
+                        {chatTestLoading ? (
+                          <>
+                            <Loader2 size={14} className="animate-spin" />
+                            测试中…
+                          </>
+                        ) : (
+                          <>
+                            <MessageCircle size={14} />
+                            测试连接
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <p className="mb-3 text-xs text-zinc-600">
+                      验证 API 配置是否正确，会发送一条简短请求到 Chat 接口。
+                    </p>
+                    <AnimatePresence>
+                      {chatTestResult && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden"
+                        >
+                          <div
+                            className={`flex gap-3 rounded-lg p-4 ${
+                              chatTestResult.ok
+                                ? "bg-emerald-500/10 border border-emerald-500/20"
+                                : "bg-red-500/10 border border-red-500/20"
+                            }`}
+                          >
+                            {chatTestResult.ok ? (
+                              <CheckCircle2
+                                size={20}
+                                className="shrink-0 text-emerald-400"
+                              />
+                            ) : (
+                              <AlertCircle
+                                size={20}
+                                className="shrink-0 text-red-400"
+                              />
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p
+                                className={`text-sm font-medium ${
+                                  chatTestResult.ok
+                                    ? "text-emerald-300"
+                                    : "text-red-300"
+                                }`}
+                              >
+                                {chatTestResult.ok ? "连接成功" : "连接失败"}
+                              </p>
+                              <pre className="mt-1 whitespace-pre-wrap break-words font-sans text-xs leading-relaxed text-zinc-300">
+                                {chatTestResult.ok
+                                  ? chatTestResult.message
+                                  : chatTestResult.error}
+                              </pre>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
 
                   {/* Tavily API Key */}
