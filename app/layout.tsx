@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/react";
 import { AuthProvider } from "@/contexts/AuthContext";
+import Providers from "@/components/providers/RainbowKitProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -44,7 +45,7 @@ export default function RootLayout({
       </head>
       <body>
         <AuthProvider>
-          {children}
+          <Providers>{children}</Providers>
         </AuthProvider>
         <Analytics />
       </body>
