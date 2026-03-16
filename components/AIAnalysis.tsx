@@ -539,14 +539,6 @@ export function AIResultPanel({ ai, scrollContainerRef, eventTitle, eventSlug }:
               Share
             </button>
           )}
-          <button
-            onClick={ai.runAnalysis}
-            disabled={ai.loading}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-200 disabled:opacity-50"
-          >
-            <RotateCcw size={12} />
-            Re-run
-          </button>
         </div>
       </div>
 
