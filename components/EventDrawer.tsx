@@ -1,0 +1,119 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+import { X, ExternalLink, Maximize2, Timer } from "lucide-react";
+import EventContent from "./EventContent";
+import Tooltip from "./Tooltip";
+import type { PolyEvent, AIConfig } from "@/lib/types";
+
+interface EventDrawerProps {
+  event: PolyEvent | null;
+  onClose: () => void;
+  aiConfig: AIConfig;
+}
+
+export default function EventDrawer({
+  event,
+  onClose,
+  aiConfig,
+}: EventDrawerProps) {
+  const router = useRouter();
+
+  useEffect(() => {
+    if (event) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [event]);
+
+  const polymarketUrl = event
+    ? `https://polymarket.com/event/${event.slug}`
+    : "#";
+
+  const handleOpenDetail = () => {
+    if (!event) return;
+    onClose();
+    router.push(`/event/${event.slug}`);
+  };
+
+  return (
+    <AnimatePresence>
+      {event && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onClose}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+          />
+
+          <motion.div
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ type: "spring", damping: 30, stiffness: 300 }}
+            className="fixed right-0 top-0 z-50 flex h-full w-full flex-col border-l border-white/[0.06] bg-[#12141d]/95 backdrop-blur-xl sm:w-[880px] xl:w-[1080px] 2xl:w-[1280px]"
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-white/[0.06] px-6 py-4">
+              <div className="flex-1 pr-5">
+                <h2 className="text-base font-bold leading-snug text-white">
+                  {event.title}
+                </h2>
+                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                  <p className="text-xs text-zinc-500">{event.slug}</p>
+                  {event.endDate && (
+                    <Tooltip content="Estimated end date · May not be accurate">
+                      <span className="inline-flex items-center gap-1 rounded-lg bg-white/[0.06] px-2.5 py-1 text-xs font-medium text-zinc-400">
+                        <Timer size={11} />
+                        ~{new Date(event.endDate).toLocaleDateString()}
+                      </span>
+                    </Tooltip>
+                  )}
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <a
+                    href={polymarketUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.06] px-2.5 py-1 text-xs font-medium text-indigo-400 transition-colors hover:bg-white/[0.1] hover:text-indigo-300"
+                  >
+                    <ExternalLink size={11} />
+                    Polymarket
+                  </a>
+                  <button
+                    onClick={handleOpenDetail}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.06] px-2.5 py-1 text-xs font-medium text-indigo-400 transition-colors hover:bg-white/[0.1] hover:text-indigo-300"
+                  >
+                    <Maximize2 size={11} />
+                    Detail
+                  </button>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-white"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <EventContent
+              event={event}
+              aiConfig={aiConfig}
+              layout="drawer"
+            />
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}

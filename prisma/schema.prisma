@@ -1,0 +1,32 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String           @id @default(uuid())
+  address      String           @unique
+  credits      Int              @default(50)
+  tavilyApiKey String?          @map("tavily_api_key")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+  analyses     AnalysisResult[]
+}
+
+model AnalysisResult {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  eventId    String   @map("event_id")
+  eventTitle String?  @map("event_title")
+  eventSlug  String?  @map("event_slug")
+  content    String
+  createdAt  DateTime @default(now()) @map("created_at")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, eventId])
+  @@index([userId])
+}
