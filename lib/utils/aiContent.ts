@@ -3,9 +3,20 @@ export interface ContentSegment {
   content: string;
 }
 
+/** Remove tool call blocks (minimax:tool_call, FunctionCallBegin/End) from text so they are never shown to users */
+export function stripToolCallBlocks(text: string): string {
+  let out = text
+    .replace(/<FunctionCallBegin>[\s\S]*?<FunctionCallEnd>\s*/g, "")
+    .replace(/minimax:tool_call\s*<invoke[\s\S]*?<\/minimax:tool_call>\s*/gi, "");
+  // Remove incomplete blocks (e.g. during streaming before closing tag arrives)
+  out = out.replace(/minimax:tool_call\s*<invoke[\s\S]*$/gi, "");
+  out = out.replace(/<FunctionCallBegin>[\s\S]*$/g, "");
+  return out.trim();
+}
+
 export function parseThinkBlocks(raw: string): ContentSegment[] {
   const segments: ContentSegment[] = [];
-  let remaining = raw;
+  let remaining = stripToolCallBlocks(raw);
 
   while (remaining.length > 0) {
     const openIdx = remaining.indexOf("<think>");
